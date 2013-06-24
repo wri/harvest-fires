@@ -1,7 +1,18 @@
 (ns harvest-fires.core
-  (:use cascalog.api)
+  (:use cascalog.api
+        cartodb.playground)
   (:require [clj-http.client :as client]
-            [clojure-csv.core :as csv]))
+            [clojure-csv.core :as csv]
+            [clojure.data.json :as json]))
+
+(defn get-creds
+  "Accepts a target key from credentials.json and returns the
+  credentials.  Default is the credentials.json directory at the top
+  of the project directory."
+  [target-key & {:keys [creds] :or {creds "credentials.json"}}]
+  (-> (slurp creds)
+      (json/read-str :key-fn keyword)
+      (target-key)))
 
 (defn se-query
   "Returns the fire data for the last 24 hours for all of Southeast
@@ -46,11 +57,14 @@
   (for [fire fire-data
         :when (< (-> fire :latitude read-string)
                  7.67)]
-    (map hard-read
-         (vals (cull-features fire)))))
+    (map hard-read (vals (cull-features fire)))))
 
 (defmain UploadFires
   "Uploads the most recent fires to cartodb table"
   []
-  (let [fires (->> (se-query) convert-fires limit-fires)]
-    (prn (first fires))))
+  (let [fires (->> (se-query) convert-fires limit-fires)
+        creds (get-creds :cartodb-creds)]
+    (do (delete-all "wri-01" creds "recent_fires")
+        (apply insert-rows "wri-01" creds "recent_fires"
+               [:conf :date :latitude :longitude]
+               fires))))
