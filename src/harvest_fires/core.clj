@@ -51,14 +51,15 @@
   [forecast-response]
   (let [proj-weather (->> forecast-response :daily :data second)]
     (rename-keys (select-keys proj-weather [:windSpeed :windBearing])
-                 {:windSpeed :projWindSpeed :windBearing :projWindBearing})))
+                 {:windSpeed :projspeed :windBearing :projbearing})))
 
 (defn current-wind-attr
   "Returns a map of current wind conditions for the supplied
   forecast."
   [forecast-response]
   (let [weather (->> forecast-response :currently)]
-    (select-keys weather [:windSpeed :windBearing])))
+    (rename-keys (select-keys weather [:windSpeed :windBearing])
+                 {:windSpeed :windspeed :windBearing :windbearing})))
 
 (defn wind-attr
   "Returns an extended fire map with current and projected wind
@@ -75,7 +76,7 @@
   fire, ready for upload into the cartodb table."
   [fire]
   (select-keys fire [:latitude :longitude :date :confidence
-                     :windSpeed :projWindSpeed :windBearing :projWindBearing]))
+                     :windspeed :projspeed :windbearing :projbearing]))
 
 (defn hard-read
   "Returns the number of the supplied string, unless it cannot be read
@@ -101,6 +102,10 @@
     (map hard-read
          (->> fire format-date wind-attr cull-features vals))))
 
+(def COLS
+  "Names of columns for insert into cartodb"
+  [:windspeed :projspeed :windbearing :projbearing :conf :date :latitude :longitude])
+
 (defmain UploadFires
   "Uploads the most recent fires to cartodb table"
   [fires]
@@ -109,5 +114,5 @@
         creds (get-creds :cartodb-creds)]
     (do (delete-all "wri-01" creds "recent_fires")
         (apply insert-rows "wri-01" creds "recent_fires"
-               [:conf :date :latitude :longitude]
+               COLS
                fires))))
