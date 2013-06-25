@@ -104,13 +104,12 @@
 
 (def COLS
   "Names of columns for insert into cartodb"
-  [:windspeed :projspeed :windbearing :projbearing :conf :date :latitude :longitude])
+  [:windspeed :projspeed :windbearing :projbearing :conf :date :longitude :latitude])
 
 (defmain UploadFires
   "Uploads the most recent fires to cartodb table"
-  [fires]
-  (let [
-        ;; fires (->> (se-query) convert-fires limit-fires)
+  []
+  (let [fires (->> (se-query) convert-fires limit-fires)
         creds (get-creds :cartodb-creds)]
     (do (delete-all "wri-01" creds "recent_fires")
         (apply insert-rows "wri-01" creds "recent_fires"
