@@ -1,6 +1,9 @@
 (ns harvest-fires.core
   (:use cascalog.api
-        cartodb.playground)
+        cartodb.playground
+        clj-time.format
+        [clj-time.core :only (date-time)]
+        [clojure.string :only (trim split)])
   (:require [clj-http.client :as client]
             [clojure-csv.core :as csv]
             [clojure.data.json :as json]))
@@ -37,11 +40,23 @@
     (map (partial zipmap cols)
          (rest fire-data))))
 
+(defn format-date
+  "Accepts a fire dictionary and returns the dictionary with a new
+  key-value pair indicating the date and time of fire acquisition."
+  [fire]
+  (let [[t d] (map fire [:acq_time :acq_date])
+        input-format (formatter "yyyy-MM-dd-HHmm")
+        final-format (formatters :date-hour-minute-second)]
+    (assoc fire :date (->> (trim t)
+                           (str d "-")
+                           (parse input-format)
+                           (unparse final-format)))))
+
 (defn cull-features
   "Accepts a single fire dictionary and returns the cleaned and culled
   fire, ready for upload into the cartodb table."
   [fire]
-  (select-keys fire [:latitude :longitude :acq_date :confidence]))
+  (select-keys fire [:latitude :longitude :date :confidence]))
 
 (defn hard-read
   "Returns the number of the supplied string, unless it cannot be read
@@ -57,7 +72,7 @@
   (for [fire fire-data
         :when (< (-> fire :latitude read-string)
                  7.67)]
-    (map hard-read (vals (cull-features fire)))))
+    (map hard-read (->> fire format-date cull-features vals))))
 
 (defmain UploadFires
   "Uploads the most recent fires to cartodb table"
