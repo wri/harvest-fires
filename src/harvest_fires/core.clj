@@ -46,17 +46,23 @@
                            (unparse final-format)))))
 
 (defn proj-wind-attr
+  "Returns a map of projected wind attributes (1 day in the future)
+  for the given forecast."
   [forecast-response]
   (let [proj-weather (->> forecast-response :daily :data second)]
     (rename-keys (select-keys proj-weather [:windSpeed :windBearing])
                  {:windSpeed :projWindSpeed :windBearing :projWindBearing})))
 
 (defn current-wind-attr
+  "Returns a map of current wind conditions for the supplied
+  forecast."
   [forecast-response]
   (let [weather (->> forecast-response :currently)]
     (select-keys weather [:windSpeed :windBearing])))
 
 (defn wind-attr
+  "Returns an extended fire map with current and projected wind
+  conditions."
   [fire]
   (let [response (forecast (:latitude fire) (:longitude fire))]
     (apply merge fire
@@ -79,6 +85,8 @@
     (if (nil? try-s) s (read-string s))))
 
 (defn in-bounds?
+  "Predicate to check whether the supplied fire is in the given
+  bounds (a bounding box around Riau)."
   [fire]
   (let [[lat lon] (map (comp read-string fire)
                        [:latitude :longitude])]
